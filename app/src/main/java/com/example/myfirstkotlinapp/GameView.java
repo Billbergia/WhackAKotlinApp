@@ -11,28 +11,38 @@ import android.graphics.Paint;
 import android.graphics.RectF;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
-import android.view.View;
-import android.view.ViewTreeObserver;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+
+import com.example.myfirstkotlinapp.Sprites.Mole;
+import com.example.myfirstkotlinapp.Sprites.MoleHole;
+import com.example.myfirstkotlinapp.Sprites.Vector2;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-public class GameView extends View {
+public class GameView extends SurfaceView implements SurfaceHolder.Callback {
+
+    private MainThread thread;
+
     private int mGridSize = 3;
     private int gridSizeX = mGridSize;
     private int gridSizeY = mGridSize;
-    private int mGridCellSizeX;
-    private int mGridCellSizeY;
+    private int mGridCellSizeX = 0;
+    private int mGridCellSizeY = 0;
 
     private RectF mHole;
     private Paint mHolePaint;
     private Paint mMolePaint;
 
     private Random random = new Random();
-    private List<Mole> moles = new ArrayList<Mole>();
+    private List<Mole> mMoles = new ArrayList<Mole>();
+    private List<MoleHole> mMoleHoles = new ArrayList<MoleHole>();
+
     private List<Bitmap> mMoleTextures = new ArrayList<Bitmap>();
     private Bitmap mHoleTexture;
 
@@ -59,24 +69,106 @@ public class GameView extends View {
         init(attrs);
     }
 
-    private void init(@Nullable AttributeSet set) {
-        if (set == null)
+    @Override
+    public void surfaceCreated(@NonNull SurfaceHolder holder) {
+
+        mGridCellSizeX = getWidth() / gridSizeX;
+        mGridCellSizeY = getHeight() / gridSizeY;
+
+        setupTextures();
+        setupMap();
+
+        thread.setRunning(true);
+        thread.start();
+    }
+
+    @Override
+    public void surfaceChanged(@NonNull SurfaceHolder holder, int format, int width, int height) {
+
+    }
+
+    @Override
+    public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
+        boolean retry = true;
+        while (retry) {
+            try {
+                thread.setRunning(false);
+                thread.join();
+            } catch (Exception exception) {
+                exception.printStackTrace();
+            }
+
+            // TODO: Not sure about this one?
+            retry = false;
+        }
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        boolean value = super.onTouchEvent(event);
+
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN: {
+                float x = event.getX();
+                float y = event.getY();
+
+                int dx = (int)Math.floor(x / mGridCellSizeX);
+                int dy = (int)Math.floor(y / mGridCellSizeY);
+
+                for (Mole mole : this.mMoles) {
+                    System.out.println("x: " + dx + ", y: " + dy);
+                    if(mole.position.Compare(dx, dy)) {
+                        if(!mole.isActive())
+                            break;
+
+                        mole.inActivate();
+                        this.activateRandomMole();
+
+                        postInvalidate();
+
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return value;
+    }
+
+    @Override
+    public void draw(Canvas canvas) {
+        super.draw(canvas);
+
+        if (canvas == null)
             return;
 
-        getAndSetOptions(set);
-        setupMap();
-        setupDebugMode();
-        activateRandomMole();
+        for (MoleHole moleHole : mMoleHoles) {
+            moleHole.draw(canvas);
+        }
 
-        getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
-            @Override
-            public void onGlobalLayout() {
-                // Only need it to be called one time, so we remove it after.
-                getViewTreeObserver().removeOnGlobalLayoutListener(this);
-                setupTextures();
-                postInvalidate();
-            }
-        });
+        for (Mole mole : mMoles) {
+            mole.draw(canvas);
+        }
+
+        //debugDrawLines(canvas);
+    }
+
+    public void update() {
+        for(Mole mole : mMoles) {
+            mole.update();
+        }
+    }
+
+    public void resetDraw() {
+        activateRandomMole();
+    }
+
+    private void init(@Nullable AttributeSet set) {
+        getHolder().addCallback(this);
+        thread = new MainThread(getHolder(), this);
+
+        if (set != null)
+            getAndSetOptions(set);
     }
 
     private void getAndSetOptions(AttributeSet set) {
@@ -95,9 +187,6 @@ public class GameView extends View {
     }
 
     private void setupTextures() {
-        mGridCellSizeX = getWidth() / gridSizeX;
-        mGridCellSizeY = getHeight() / gridSizeY;
-
         mHoleTexture = BitmapFactory.decodeResource(getResources(), R.drawable.wak_template);
         mHoleTexture = getResizedBitmap(mHoleTexture, mGridCellSizeX, mGridCellSizeY);
         for (int moleTextureId : mMoleTextureIds) {
@@ -106,78 +195,36 @@ public class GameView extends View {
         }
     }
 
-    private Bitmap getResizedBitmap(Bitmap bitmap, int reqWidth, int reqHeight) {
+    private Bitmap getResizedBitmap(Bitmap bitmap, int newWidth, int newHeight) {
+        RectF src = new RectF(0, 0, bitmap.getWidth(), bitmap.getHeight());
+        RectF dst = new RectF(0, 0, newWidth, newHeight);
         Matrix matrix = new Matrix();
-
-        RectF src = new RectF(0,0,bitmap.getWidth(),bitmap.getHeight());
-        RectF dst = new RectF(0,0,reqWidth,reqHeight);
-
         matrix.setRectToRect(src, dst, Matrix.ScaleToFit.FILL);
 
-        int posX = 0;
-        int posY = 0;
-
-        return Bitmap.createBitmap(bitmap, posX, posY , bitmap.getWidth(), bitmap.getHeight(), matrix, true);
-    }
-
-    private void setupDebugMode() {
-        this.mHole = new RectF();
-        this.mHolePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        this.mHolePaint.setColor(Color.BLACK);
-
-        this.mMolePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        this.mMolePaint.setColor(Color.GREEN);
+        Bitmap resized = Bitmap.createBitmap(bitmap, 0, 0 , bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+        bitmap.recycle();
+        return resized;
     }
 
     private void setupMap() {
         for (int x = 0; x < gridSizeX; x++) {
             for (int y = 0; y < gridSizeY; y++) {
-                moles.add(new Mole(x, y));
+                mMoles.add(new Mole(new Vector2(x, y), mGridCellSizeX, mGridCellSizeY));
+                mMoleHoles.add(new MoleHole(new Vector2(x, y), mGridCellSizeX, mGridCellSizeY, mHoleTexture));
             }
         }
-    }
-
-    public void resetDraw() {
-        postInvalidate();
     }
 
     private void activateRandomMole() {
+        if (this.mMoles.size() == 0)
+            return;
+
         boolean randomMoleActivated = false;
         while (!randomMoleActivated) {
-            Mole mole = this.moles.get(random.nextInt(this.moles.size()));
-            if(!mole.active) {
-                mole.active = true;
+            Mole mole = this.mMoles.get(random.nextInt(this.mMoles.size()));
+            if(!mole.isActive()) {
+                mole.activate();
                 randomMoleActivated = true;
-            }
-        }
-    }
-
-    private void debugDraw(Canvas canvas) {
-        float holeWidth = mGridCellSizeX * 0.8f;
-        float holeHeight = mGridCellSizeY * 0.4f;
-
-        float marginX = (mGridCellSizeX - holeWidth) * 0.5f;
-        float marginY = (mGridCellSizeY - holeHeight) * 0.8f;
-
-        for (Mole mole : moles) {
-            this.mHole.left = mole.coordinates.x * mGridCellSizeX + marginX;
-            this.mHole.top = mole.coordinates.y * mGridCellSizeY + marginY;
-            this.mHole.right = this.mHole.left + holeWidth;
-            this.mHole.bottom = this.mHole.top + holeHeight;
-
-            canvas.drawOval(this.mHole, this.mHolePaint);
-
-            if(mole.active) {
-                canvas.drawCircle(
-                    mole.coordinates.x * mGridCellSizeX + mGridCellSizeX / 2,
-                    mole.coordinates.y * mGridCellSizeY + mGridCellSizeY / 2,
-                    mGridCellSizeX / 4, this.mMolePaint);
-            }
-        }
-
-        for(int x = 0; x < gridSizeX; x++) {
-            for(int y = 0; y < gridSizeY; y++) {
-                canvas.drawLine(x, y, x * mGridCellSizeX, y * mGridCellSizeY, mHolePaint);
             }
         }
     }
@@ -192,90 +239,27 @@ public class GameView extends View {
         }
     }
 
-    @Override
-    protected void onDraw(Canvas canvas) {
+    private void debugDraw(Canvas canvas) {
+        float holeWidth = mGridCellSizeX * 0.8f;
+        float holeHeight = mGridCellSizeY * 0.4f;
 
-        for (Mole mole : moles) {
-            canvas.drawBitmap(this.mHoleTexture, mole.coordinates.x * mGridCellSizeX, mole.coordinates.y * mGridCellSizeY, null);
-            if(mole.active) {
+        float marginX = (mGridCellSizeX - holeWidth) * 0.5f;
+        float marginY = (mGridCellSizeY - holeHeight) * 0.8f;
+
+        for (Mole mole : mMoles) {
+            this.mHole.left = mole.position.x * mGridCellSizeX + marginX;
+            this.mHole.top = mole.position.y * mGridCellSizeY + marginY;
+            this.mHole.right = this.mHole.left + holeWidth;
+            this.mHole.bottom = this.mHole.top + holeHeight;
+
+            canvas.drawOval(this.mHole, this.mHolePaint);
+
+            if(mole.isActive()) {
                 canvas.drawCircle(
-                        mole.coordinates.x * mGridCellSizeX + mGridCellSizeX / 2,
-                        mole.coordinates.y * mGridCellSizeY + mGridCellSizeY / 2,
+                        mole.position.x * mGridCellSizeX + mGridCellSizeX / 2,
+                        mole.position.y * mGridCellSizeY + mGridCellSizeY / 2,
                         mGridCellSizeX / 4, this.mMolePaint);
             }
-        }
-
-        debugDrawLines(canvas);
-    }
-
-    @Override
-    public boolean onTouchEvent(MotionEvent event) {
-        boolean value = super.onTouchEvent(event);
-
-        switch (event.getAction()) {
-            case MotionEvent.ACTION_DOWN: {
-                float x = event.getX();
-                float y = event.getY();
-
-                int dx = (int)Math.floor(x / mGridCellSizeX);
-                int dy = (int)Math.floor(y / mGridCellSizeY);
-
-                for (Mole mole : this.moles) {
-                    System.out.println("x: " + dx + ", y: " + dy);
-                    if(mole.coordinates.Compare(dx, dy)) {
-                        if(!mole.active)
-                            break;
-
-                        mole.active = false;
-                        this.activateRandomMole();
-
-                        postInvalidate();
-
-                        return true;
-                    }
-                }
-            }
-        }
-
-        return value;
-    }
-
-    public class Vector2 {
-        public int x;
-        public int y;
-
-        Vector2(int x, int y) {
-            this.x = x;
-            this.y = y;
-        }
-
-        public boolean Compare(int x, int y) {
-            if (x == this.x && y == this.y) {
-                return true;
-            }
-
-            return false;
-        }
-
-        public boolean Compare(Vector2 vec) {
-            if (vec.x == this.x && vec.y == this.y) {
-                return true;
-            }
-
-            return false;
-        }
-    }
-
-    public class Mole {
-        public Vector2 coordinates;
-        public boolean active = false;
-
-        Mole(Vector2 coordinates) {
-            this.coordinates = coordinates;
-        }
-
-        Mole(int x, int y) {
-            this.coordinates = new Vector2(x, y);
         }
     }
 }

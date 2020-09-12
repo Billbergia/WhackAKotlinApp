@@ -7,7 +7,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import androidx.lifecycle.ViewModelProvider
-import androidx.navigation.fragment.findNavController
 import com.example.myfirstkotlinapp.GameView
 import com.example.myfirstkotlinapp.R
 import com.example.myfirstkotlinapp.viewmodel.GameViewModel
