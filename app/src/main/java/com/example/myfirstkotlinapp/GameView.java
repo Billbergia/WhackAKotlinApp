@@ -1,13 +1,18 @@
 package com.example.myfirstkotlinapp;
 
 import android.content.Context;
+import android.content.res.TypedArray;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewTreeObserver;
 
 import androidx.annotation.Nullable;
 
@@ -16,16 +21,23 @@ import java.util.List;
 import java.util.Random;
 
 public class GameView extends View {
-    private static final int gridSize = 3;
-    private static final int gridSizeX = gridSize;
-    private static final int gridSizeY = gridSize;
+    private int mGridSize = 3;
+    private int gridSizeX = mGridSize;
+    private int gridSizeY = mGridSize;
+    private int mGridCellSizeX;
+    private int mGridCellSizeY;
 
     private RectF mHole;
     private Paint mHolePaint;
     private Paint mMolePaint;
 
+    private Random random = new Random();
     private List<Mole> moles = new ArrayList<Mole>();
-    private Random random = new Random();;
+    private List<Bitmap> mMoleTextures = new ArrayList<Bitmap>();
+    private Bitmap mHoleTexture;
+
+    private int mHoleTextureId = R.drawable.default_texture;
+    private int[] mMoleTextureIds;
 
     public GameView(Context context) {
         super(context);
@@ -48,18 +60,76 @@ public class GameView extends View {
     }
 
     private void init(@Nullable AttributeSet set) {
+        if (set == null)
+            return;
+
+        getAndSetOptions(set);
+        setupMap();
+        setupDebugMode();
+        activateRandomMole();
+
+        getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+            @Override
+            public void onGlobalLayout() {
+                // Only need it to be called one time, so we remove it after.
+                getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                setupTextures();
+                postInvalidate();
+            }
+        });
+    }
+
+    private void getAndSetOptions(AttributeSet set) {
+        TypedArray ta = getContext().obtainStyledAttributes(set, R.styleable.GameView);
+
+        mGridSize = ta.getInt(R.styleable.GameView_grid_size, 3);
+        gridSizeX = mGridSize;
+        gridSizeY = mGridSize;
+
+        mHoleTextureId = ta.getResourceId(R.styleable.GameView_hole_texture, R.drawable.default_texture);
+        mMoleTextureIds = new int[]{
+                ta.getResourceId(R.styleable.GameView_mole_texture_1, R.drawable.default_texture),
+                ta.getResourceId(R.styleable.GameView_mole_texture_2, R.drawable.default_texture),
+                ta.getResourceId(R.styleable.GameView_mole_texture_3, R.drawable.default_texture)
+        };
+    }
+
+    private void setupTextures() {
+        mGridCellSizeX = getWidth() / gridSizeX;
+        mGridCellSizeY = getHeight() / gridSizeY;
+
+        mHoleTexture = BitmapFactory.decodeResource(getResources(), R.drawable.wak_template);
+        mHoleTexture = getResizedBitmap(mHoleTexture, mGridCellSizeX, mGridCellSizeY);
+        for (int moleTextureId : mMoleTextureIds) {
+            Bitmap texture = getResizedBitmap(BitmapFactory.decodeResource(getResources(), moleTextureId), mGridCellSizeX, mGridCellSizeY);
+            mMoleTextures.add(texture);
+        }
+    }
+
+    private Bitmap getResizedBitmap(Bitmap bitmap, int reqWidth, int reqHeight) {
+        Matrix matrix = new Matrix();
+
+        RectF src = new RectF(0,0,bitmap.getWidth(),bitmap.getHeight());
+        RectF dst = new RectF(0,0,reqWidth,reqHeight);
+
+        matrix.setRectToRect(src, dst, Matrix.ScaleToFit.FILL);
+
+        int posX = 0;
+        int posY = 0;
+
+        return Bitmap.createBitmap(bitmap, posX, posY , bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+    }
+
+    private void setupDebugMode() {
         this.mHole = new RectF();
         this.mHolePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         this.mHolePaint.setColor(Color.BLACK);
 
         this.mMolePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         this.mMolePaint.setColor(Color.GREEN);
-
-        this.SetupMap();
-        this.activateRandomMole();
     }
 
-    private void SetupMap() {
+    private void setupMap() {
         for (int x = 0; x < gridSizeX; x++) {
             for (int y = 0; y < gridSizeY; y++) {
                 moles.add(new Mole(x, y));
@@ -82,20 +152,16 @@ public class GameView extends View {
         }
     }
 
-    @Override
-    protected void onDraw(Canvas canvas) {
-        float cellWidth = (float)getWidth() / gridSizeX;
-        float cellHeight = (float)getHeight() / gridSizeY;
+    private void debugDraw(Canvas canvas) {
+        float holeWidth = mGridCellSizeX * 0.8f;
+        float holeHeight = mGridCellSizeY * 0.4f;
 
-        float holeWidth = cellWidth * 0.8f;
-        float holeHeight = cellHeight * 0.4f;
-
-        float marginX = (cellWidth - holeWidth) * 0.5f;
-        float marginY = (cellHeight - holeHeight) * 0.8f;
+        float marginX = (mGridCellSizeX - holeWidth) * 0.5f;
+        float marginY = (mGridCellSizeY - holeHeight) * 0.8f;
 
         for (Mole mole : moles) {
-            this.mHole.left = mole.coordinates.x * cellWidth + marginX;
-            this.mHole.top = mole.coordinates.y * cellHeight + marginY;
+            this.mHole.left = mole.coordinates.x * mGridCellSizeX + marginX;
+            this.mHole.top = mole.coordinates.y * mGridCellSizeY + marginY;
             this.mHole.right = this.mHole.left + holeWidth;
             this.mHole.bottom = this.mHole.top + holeHeight;
 
@@ -103,11 +169,43 @@ public class GameView extends View {
 
             if(mole.active) {
                 canvas.drawCircle(
-                        mole.coordinates.x * cellWidth + cellWidth / 2,
-                        mole.coordinates.y * cellHeight + cellHeight / 2,
-                        cellWidth / 4, this.mMolePaint);
+                    mole.coordinates.x * mGridCellSizeX + mGridCellSizeX / 2,
+                    mole.coordinates.y * mGridCellSizeY + mGridCellSizeY / 2,
+                    mGridCellSizeX / 4, this.mMolePaint);
             }
         }
+
+        for(int x = 0; x < gridSizeX; x++) {
+            for(int y = 0; y < gridSizeY; y++) {
+                canvas.drawLine(x, y, x * mGridCellSizeX, y * mGridCellSizeY, mHolePaint);
+            }
+        }
+    }
+
+    private void debugDrawLines(Canvas canvas) {
+        for(int x = 0; x < gridSizeX; x++) {
+            canvas.drawLine(x * mGridCellSizeX, 0, x * mGridCellSizeX, getHeight(), mHolePaint);
+        }
+
+        for(int y = 0; y < gridSizeY; y++) {
+            canvas.drawLine(0, y * mGridCellSizeY, getWidth(), y * mGridCellSizeY, mHolePaint);
+        }
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+
+        for (Mole mole : moles) {
+            canvas.drawBitmap(this.mHoleTexture, mole.coordinates.x * mGridCellSizeX, mole.coordinates.y * mGridCellSizeY, null);
+            if(mole.active) {
+                canvas.drawCircle(
+                        mole.coordinates.x * mGridCellSizeX + mGridCellSizeX / 2,
+                        mole.coordinates.y * mGridCellSizeY + mGridCellSizeY / 2,
+                        mGridCellSizeX / 4, this.mMolePaint);
+            }
+        }
+
+        debugDrawLines(canvas);
     }
 
     @Override
@@ -119,11 +217,8 @@ public class GameView extends View {
                 float x = event.getX();
                 float y = event.getY();
 
-                float cellWidth = getWidth() / (float)gridSizeX;
-                float cellHeight = getHeight() / (float)gridSizeY;
-
-                int dx = (int)Math.floor(x / cellWidth);
-                int dy = (int)Math.floor(y / cellHeight);
+                int dx = (int)Math.floor(x / mGridCellSizeX);
+                int dy = (int)Math.floor(y / mGridCellSizeY);
 
                 for (Mole mole : this.moles) {
                     System.out.println("x: " + dx + ", y: " + dy);
