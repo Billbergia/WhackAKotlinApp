@@ -4,13 +4,9 @@ import android.graphics.Canvas;
 
 public class BaseSprite implements IBaseSprite {
     public Vector2 position;
-    public int width;
-    public int height;
 
-    public BaseSprite(Vector2 position, int width, int height) {
+    public BaseSprite(Vector2 position) {
         this.position = position;
-        this.width = width;
-        this.height = height;
     }
 
     @Override

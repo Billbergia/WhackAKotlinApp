@@ -9,7 +9,7 @@ public class MainThread extends Thread {
     private GameView gameView;
 
     private boolean isRunning;
-    private int targetFps = 30;
+    private int targetFps = 60;
     private double averageFps = 0;
 
     public static Canvas canvas;

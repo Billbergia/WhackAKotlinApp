@@ -1,59 +1,63 @@
 package com.example.myfirstkotlinapp.Sprites;
 
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
+
+import java.util.List;
+import java.util.Random;
 
 public class Mole extends BaseSprite {
 
     private Vector2 startPosition;
+    private List<Bitmap> textures;
+    private Bitmap currentTexture;
+
     private boolean active = false;
-    private int velocity = 3;
+    private Random random = new Random();
 
-    private int testing = 0;
+    public Mole(Vector2 position, List<Bitmap> textures) {
+        super(position);
 
-    private Paint paint;
+        this.startPosition = position.createCopy();
+        this.textures = textures;
 
-    public Mole(Vector2 position, int width, int height) {
-        super(position, width, height);
-
-        this.startPosition = position;
-        this.paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        paint.setColor(Color.GREEN);
+        setRandomTexture();
     }
 
     @Override
     public void draw(Canvas canvas) {
-        if(!this.active)
+        if(!this.active && position.y >= startPosition.y)
             return;
 
-        canvas.drawCircle(
-                this.position.x * this.width + this.width / 2,
-                this.position.y * this.height - testing + this.height / 2,
-                this.width / 4, paint);
-
-        testing += 10;
+        canvas.drawBitmap(currentTexture, position.x * currentTexture.getWidth(), position.y * currentTexture.getHeight(), null);
     }
 
     @Override
     public void update() {
-        //if(this.active && this.position.y < this.position.y * 2) {
-        //    this.position.y += 0.8f;
-        //}
+        if(this.active && this.position.y > this.startPosition.y - 1) {
+            this.position.y -= 0.25f;
+        } else if (!this.active && this.position.y <= this.startPosition.y) {
+            this.position.y += 0.25f;
+        }
     }
 
     public void activate() {
         this.active = true;
+        setRandomTexture();
         System.out.println("Mole activated.");
     }
 
     public void inActivate() {
-        System.out.println("Mole deactivated.");
         this.active = false;
-        position.y = startPosition.y;
+        System.out.println("Mole deactivated.");
     }
 
     public boolean isActive() {
         return this.active;
+    }
+
+    private void setRandomTexture() {
+        int randomIndex = random.nextInt(textures.size());
+        currentTexture = textures.get(randomIndex);
     }
 }

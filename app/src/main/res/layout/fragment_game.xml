@@ -39,8 +39,6 @@
         app:layout_constraintGuide_percent="0.5" />
 
     <com.example.myfirstkotlinapp.GameView
-        app:hole_texture="@drawable/wak_template"
-        app:grid_size="4"
         android:id="@+id/game_view"
         android:layout_width="match_parent"
         android:layout_height="340dp"

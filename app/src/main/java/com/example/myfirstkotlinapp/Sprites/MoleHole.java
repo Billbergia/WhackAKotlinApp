@@ -7,14 +7,14 @@ public class MoleHole extends BaseSprite {
 
     private Bitmap texture;
 
-    public MoleHole(Vector2 position, int width, int height, Bitmap texture) {
-        super(position, width, height);
+    public MoleHole(Vector2 position, Bitmap texture) {
+        super(position);
 
         this.texture = texture;
     }
 
     @Override
     public void draw(Canvas canvas) {
-        canvas.drawBitmap(this.texture, this.position.x * this.width, this.position.y * this.height, null);
+        canvas.drawBitmap(this.texture, this.position.x * texture.getWidth(), this.position.y * this.texture.getHeight(), null);
     }
 }
