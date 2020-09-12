@@ -44,12 +44,10 @@ public class Mole extends BaseSprite {
     public void activate() {
         this.active = true;
         setRandomTexture();
-        System.out.println("Mole activated.");
     }
 
     public void inActivate() {
         this.active = false;
-        System.out.println("Mole deactivated.");
     }
 
     public boolean isActive() {

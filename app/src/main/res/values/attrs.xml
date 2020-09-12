@@ -2,9 +2,11 @@
 <resources>
     <declare-styleable name="GameView">
         <attr name="hole_texture" format="reference"></attr>
+        <attr name="hole_foreground_texture" format="reference"></attr>
         <attr name="mole_texture_1" format="reference"></attr>
         <attr name="mole_texture_2" format="reference"></attr>
         <attr name="mole_texture_3" format="reference"></attr>
         <attr name="grid_size" format="integer"></attr>
+        <attr name="debug_grid" format="boolean"></attr>
     </declare-styleable>
 </resources>
