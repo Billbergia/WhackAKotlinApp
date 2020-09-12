@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 
 class GameViewModel : ViewModel() {
 
-    private val _
+    //private val _
 
     override fun onCleared() {
         /*

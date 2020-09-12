@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import android.widget.Button
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
+import com.example.myfirstkotlinapp.GameView
 import com.example.myfirstkotlinapp.R
 import com.example.myfirstkotlinapp.viewmodel.GameViewModel
 
@@ -19,14 +20,14 @@ class GameFragment : Fragment() {
     lateinit var viewModel: GameViewModel
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        return inflater.inflate(R.layout.fragment_first, container, false)
+        return inflater.inflate(R.layout.fragment_game, container, false)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         viewModel = ViewModelProvider(this).get(GameViewModel::class.java)
-        view.findViewById<Button>(R.id.button_first).setOnClickListener {
-            findNavController().navigate(R.id.action_FirstFragment_to_SecondFragment)
-        }
+
+        val gameView = view.findViewById<GameView>(R.id.game_view)
+        view.findViewById<Button>(R.id.start_game).setOnClickListener { gameView.resetDraw() }
     }
 }
