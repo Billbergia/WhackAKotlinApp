@@ -15,7 +15,7 @@ public class BaseSprite implements IBaseSprite {
     }
 
     @Override
-    public void update() {
+    public void update(float elapsedTime) {
 
     }
 }

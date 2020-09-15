@@ -3,14 +3,18 @@ package com.example.myfirstkotlinapp.Sprites;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 
+import com.example.myfirstkotlinapp.GameGlobal;
+
 import java.util.List;
 import java.util.Random;
 
 public class Mole extends BaseSprite {
 
     private Vector2 startPosition;
+    private Vector2 targetPosition;
     private List<Bitmap> textures;
     private Bitmap currentTexture;
+    private float speed = 5.0f;
 
     private boolean active = false;
     private Random random = new Random();
@@ -18,7 +22,8 @@ public class Mole extends BaseSprite {
     public Mole(Vector2 position, List<Bitmap> textures) {
         super(position);
 
-        this.startPosition = position.createCopy();
+        this.startPosition = position.copy();
+        this.targetPosition = new Vector2(position.x, position.y - 1);
         this.textures = textures;
 
         setRandomTexture();
@@ -33,11 +38,15 @@ public class Mole extends BaseSprite {
     }
 
     @Override
-    public void update() {
-        if(this.active && this.position.y > this.startPosition.y - 1) {
-            this.position.y -= 0.25f;
-        } else if (!this.active && this.position.y <= this.startPosition.y) {
-            this.position.y += 0.25f;
+    public void update(float elapsedTime) {
+        if(this.active && this.position.y > this.targetPosition.y) {
+            this.position.y -= speed * GameGlobal.deltaTime();
+            if (this.position.y < this.targetPosition.y)
+                this.position.y = this.targetPosition.y;
+        } else if (!this.active && this.position.y < this.startPosition.y) {
+            this.position.y += speed * GameGlobal.deltaTime() * 2;
+            if (this.position.y > this.startPosition.y)
+                this.position.y = this.startPosition.y;
         }
     }
 

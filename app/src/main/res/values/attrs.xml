@@ -7,6 +7,6 @@
         <attr name="mole_texture_2" format="reference"></attr>
         <attr name="mole_texture_3" format="reference"></attr>
         <attr name="grid_size" format="integer"></attr>
-        <attr name="debug_grid" format="boolean"></attr>
+        <attr name="debug" format="boolean"></attr>
     </declare-styleable>
 </resources>
