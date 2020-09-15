@@ -39,8 +39,8 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
     private int mGridCellSizeY = 0;
 
     private boolean mRoundActive = false;
-    private long mRoundStarted = 0;
-    private long mWaitTilNextRound = 0;
+    private float mRoundStarted = 0f;
+    private float mWaitTilNextRound = 0f;
 
     private Random mRandom = new Random();
     private List<Mole> mMoles = new ArrayList<Mole>();
@@ -235,7 +235,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
         if (mLastDebugPress.equals(dx, dy) && mLastDebugPressTimeMs + 200 > eventDownTime) {
             if (mLastDebugPress.equals(0, 0)) {
                 mDebug = !mDebug;
-            } else if (mDebug && mLastDebugPress.equals(0, mGridSizeY - 1)) {
+            } else if (mDebug && mLastDebugPress.equals(0, mGridSizeY - 1) && mGridSize > 2) {
                 mGridSize -= 1;
                 mGridSizeX = mGridSize;
                 mGridSizeY = mGridSize;
@@ -288,10 +288,11 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
 
             List<String> debugTextLines = new ArrayList<String>();
             debugTextLines.add(String.format("FPS: %d", GameGlobal.averageFps()));
-            debugTextLines.add(String.format("GridSize: %d", mGridSize));
+            debugTextLines.add(String.format("DeltaTime: %f s", GameGlobal.deltaTime()));
+            debugTextLines.add(String.format("CurrentTime: %.2f s", GameGlobal.currentTime()));
             debugTextLines.add(String.format("ActiveMoles: %d", mActiveMoles.size()));
-            debugTextLines.add(String.format("CellWidth: %d", mGridCellSizeX));
-            debugTextLines.add(String.format("CellHeight: %d", mGridCellSizeY));
+            debugTextLines.add(String.format("GridSize: %d x %d", mGridSizeX, mGridSizeY));
+            debugTextLines.add(String.format("SpriteSize: %d x %d", mGridCellSizeX, mGridCellSizeY));
             drawDebutTextLines(canvas, debugTextLines);
 
         } catch (Exception exception) {
@@ -309,7 +310,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
         mDebugPaint.setColor(Color.BLACK);
         mDebugPaint.setAlpha(100);
         mDebugPaint.setStrokeWidth(strokeWidth);
-        canvas.drawLine(0, strokeWidth / 2, getWidth() / 2, strokeWidth / 2, mDebugPaint);
+        canvas.drawLine(0, strokeWidth / 2, getWidth(), strokeWidth / 2, mDebugPaint);
 
         int increment = 0;
         mDebugPaint.setColor(Color.WHITE);
@@ -339,13 +340,12 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
     }
 
     private void logic() {
-        long currentTime = System.currentTimeMillis();
         // TODO: Consider adding this as view attribute.
-        long waitTime = 2000l;
+        float waitTime = 2f;
 
-        if (!mRoundActive && currentTime > mWaitTilNextRound) {
+        if (!mRoundActive && GameGlobal.currentTime() > mWaitTilNextRound) {
             mRoundActive = true;
-            mRoundStarted = currentTime;
+            mRoundStarted = GameGlobal.currentTime();
 
             int numberOfMolesToActivate = mRandom.nextInt((mGridSizeX * mGridSizeY / 2) - 1) + 1;
             while (numberOfMolesToActivate > 0) {
@@ -354,14 +354,14 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
             }
         }
 
-        if (mRoundActive && (currentTime > mRoundStarted + waitTime || mActiveMoles.size() == 0)) {
+        if (mRoundActive && (GameGlobal.currentTime() > mRoundStarted + waitTime || mActiveMoles.size() == 0)) {
             mRoundActive = false;
 
             for (Mole mole : mActiveMoles) {
                 mole.inActivate();
             }
 
-            mWaitTilNextRound = currentTime + waitTime;
+            mWaitTilNextRound = GameGlobal.currentTime() + waitTime;
             mActiveMoles.clear();
         }
     }

@@ -42,6 +42,7 @@ public class GameThread extends Thread {
                 synchronized (surfaceHolder) {
                     // Give update deltaTime in seconds instead of nano seconds.
                     this.gameGlobal._deltaTime = (float)(deltaTimeNs / 1_000_000_000.0);
+                    this.gameGlobal._currentTime = (float)(currentTimeNs / 1_000_000_000.0);
                     this.gameView.update((float)(deltaTimeNs / 1_000_000_000.0));
                     this.gameView.draw(canvas);
                 }

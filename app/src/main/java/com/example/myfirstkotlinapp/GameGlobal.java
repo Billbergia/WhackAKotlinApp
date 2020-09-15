@@ -5,6 +5,7 @@ public class GameGlobal {
 
     // Time since last frame.
     public float _deltaTime = 0;
+    public float _currentTime = 0;
     public long _averageFps = 0;
 
     public static GameGlobal getInstance() {
@@ -17,6 +18,8 @@ public class GameGlobal {
     public static float deltaTime() {
         return GameGlobal.getInstance()._deltaTime;
     }
+
+    public static float currentTime() { return GameGlobal.getInstance()._currentTime; }
 
     public static long averageFps() {
         return GameGlobal.getInstance()._averageFps;
