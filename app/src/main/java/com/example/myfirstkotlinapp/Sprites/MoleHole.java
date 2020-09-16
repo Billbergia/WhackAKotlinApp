@@ -2,6 +2,7 @@ package com.example.myfirstkotlinapp.Sprites;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Paint;
 
 public class MoleHole extends BaseSprite {
 

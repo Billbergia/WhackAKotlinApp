@@ -64,4 +64,8 @@ public class Vector2 {
     public Vector2 copy() {
         return new Vector2(this.x, this.y);
     }
+
+    public String toString() {
+        return String.format("x:%.1f y:%.1f", this.x, this.y);
+    }
 }
