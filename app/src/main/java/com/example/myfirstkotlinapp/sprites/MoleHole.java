@@ -1,8 +1,10 @@
-package com.example.myfirstkotlinapp.Sprites;
+package com.example.myfirstkotlinapp.sprites;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.Paint;
+
+import com.example.myfirstkotlinapp.gamecore.BaseSprite;
+import com.example.myfirstkotlinapp.gamecore.Vector2;
 
 public class MoleHole extends BaseSprite {
 
@@ -23,5 +25,10 @@ public class MoleHole extends BaseSprite {
 
     public void drawForeground(Canvas canvas) {
         canvas.drawBitmap(this.foregroundTexture, this.position.x * this.foregroundTexture.getWidth(), this.position.y * this.foregroundTexture.getHeight(), null);
+    }
+
+    @Override
+    public void update() {
+        // Nothing needed here yet.
     }
 }

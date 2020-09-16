@@ -18,14 +18,20 @@ import android.view.SurfaceView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.example.myfirstkotlinapp.Sprites.Mole;
-import com.example.myfirstkotlinapp.Sprites.MoleHole;
-import com.example.myfirstkotlinapp.Sprites.Vector2;
+import com.example.myfirstkotlinapp.gamecore.GameGlobal;
+import com.example.myfirstkotlinapp.gamecore.GameThread;
+import com.example.myfirstkotlinapp.sprites.Mole;
+import com.example.myfirstkotlinapp.sprites.MoleHole;
+import com.example.myfirstkotlinapp.gamecore.Vector2;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+/*
+* TODO: Probably a good idea to try to split this up, perhaps create a base class which can be used
+*       for creating other games.
+* */
 public class GameView extends SurfaceView implements SurfaceHolder.Callback {
 
     private GameThread thread;
@@ -351,7 +357,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
         */
 
         for(Mole mole : mMoles) {
-            mole.update(deltaTime);
+            mole.update();
         }
     }
 

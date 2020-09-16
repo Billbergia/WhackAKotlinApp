@@ -1,9 +1,11 @@
-package com.example.myfirstkotlinapp.Sprites;
+package com.example.myfirstkotlinapp.sprites;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 
-import com.example.myfirstkotlinapp.GameGlobal;
+import com.example.myfirstkotlinapp.gamecore.GameGlobal;
+import com.example.myfirstkotlinapp.gamecore.BaseSprite;
+import com.example.myfirstkotlinapp.gamecore.Vector2;
 
 import java.util.List;
 import java.util.Random;
@@ -38,7 +40,7 @@ public class Mole extends BaseSprite {
     }
 
     @Override
-    public void update(float elapsedTime) {
+    public void update() {
         if(this.active && this.position.y > this.targetPosition.y) {
             this.position.y -= speed * GameGlobal.deltaTime();
             if (this.position.y < this.targetPosition.y)

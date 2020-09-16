@@ -1,7 +1,9 @@
-package com.example.myfirstkotlinapp;
+package com.example.myfirstkotlinapp.gamecore;
 
 import android.graphics.Canvas;
 import android.view.SurfaceHolder;
+
+import com.example.myfirstkotlinapp.GameView;
 
 public class GameThread extends Thread {
 
