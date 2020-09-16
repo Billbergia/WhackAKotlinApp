@@ -27,6 +27,6 @@ class GameFragment : Fragment() {
         viewModel = ViewModelProvider(this).get(GameViewModel::class.java)
 
         val gameView = view.findViewById<GameView>(R.id.game_view)
-        view.findViewById<Button>(R.id.start_game).setOnClickListener { gameView.resetDraw() }
+        view.findViewById<Button>(R.id.start_game).setOnClickListener { gameView.startGame() }
     }
 }

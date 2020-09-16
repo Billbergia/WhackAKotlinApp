@@ -61,11 +61,12 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
     private int mHoleTextureForegroundId;
     private int[] mMoleTextureIds;
 
-    private Vector2 mLastTouch = new Vector2();
-    private long mLastTouchTimeMs = 0;
+    private Vector2 mPreviousTouch = new Vector2();
+    private Vector2 mCurrentTouch = new Vector2();
+    private long mPreviousTouchTimeMs = 0;
 
     private boolean mDebug = false;
-    private boolean mDebugCoordinates = false;
+    private boolean mDebugGridAndCoordinates = false;
     private Paint mDebugPaint;
     private int mDebugTextSize = 50;
 
@@ -94,10 +95,10 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
         thread = new GameThread(getHolder(), this);
 
         if (set != null)
-            getAttributesAndSetOptionFields(set);
+            getAttributesAndInitializeOptionFields(set);
     }
 
-    private void getAttributesAndSetOptionFields(AttributeSet set) {
+    private void getAttributesAndInitializeOptionFields(AttributeSet set) {
         TypedArray ta = getContext().obtainStyledAttributes(set, R.styleable.GameView);
 
         mGridSize = ta.getInt(R.styleable.GameView_grid_size, 3);
@@ -161,19 +162,20 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
         return resized;
     }
 
+    /*
+    * Consider below grid 3 x 3, this will be our default play field.
+    * We'll span the mole underneath it's hole, see below grid example.
+    *
+    *       0   1   2
+    *   0 |   |   |   |
+    *   1 |   | o |   |      o = hole
+    *   2 |   | x |   |      x = mole
+    *
+    * */
     private void createLevel() {
-        // Consider below grid 3 x 3, this will be our default play field.
-        // We'll span the mole underneath it's hole, see below grid example.
-        // o = hole and x = mole
-
-        //     0   1   2
-        // 0 |   |   |   |
-        // 1 |   | o |   |
-        // 2 |   | x |   |
-
-        mActiveMoles.clear();
-        mMoleHoles.clear();
         mMoles.clear();
+        mMoleHoles.clear();
+        mActiveMoles.clear();
 
         for (int x = 0; x < mGridSizeX; x++) {
             for (int y = 0; y < mGridSizeY; y++) {
@@ -185,7 +187,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
 
     @Override
     public void surfaceChanged(@NonNull SurfaceHolder holder, int format, int width, int height) {
-
+        // TODO: do we need to do anything here?
     }
 
     @Override
@@ -215,46 +217,33 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
 
                 int dx = (int)Math.floor(x / mGridCellSizeX);
                 int dy = (int)Math.floor(y / mGridCellSizeY);
+                mCurrentTouch.set(dx, dy);
 
-                if (mLastTouch.equals(dx, dy) && mLastTouchTimeMs + 200 > event.getDownTime())
-                    toggleDebugMode();
+                debugOptionsTouched(event.getDownTime());
+                activeMoleTouched();
 
-                mLastTouch.set(dx, dy);
-                mLastTouchTimeMs = event.getDownTime();
-
-                // Only check if active mole was touched.
-                // Downside with this is that won't be possible to
-                // score on moles that are going down in the hole.
-
-                // Also another downside is that for every single touch
-                // this will loop through all active moles.
-                for (Mole mole : mActiveMoles) {
-                    if(mole.position.equals(mLastTouch)) {
-                        if(!mole.isActive())
-                            break;
-
-                        mole.inActivate();
-                        mActiveMoles.remove(mole);
-                        break;
-                    }
-                }
+                mPreviousTouch.set(dx, dy);
+                mPreviousTouchTimeMs = event.getDownTime();
             }
         }
 
         return value;
     }
 
-    private void toggleDebugMode() {
-        if (mLastTouch.equals(0, 0)) {
+    private void debugOptionsTouched(long eventDownTime) {
+        if (!mPreviousTouch.equals(mCurrentTouch) || mPreviousTouchTimeMs + 200 < eventDownTime)
+            return;
+
+        if (mPreviousTouch.equals(0, 0)) {
             mDebug = !mDebug;
-        } else if (mDebug && mLastTouch.equals(mGridSizeX - 1, 0)) {
-            mDebugCoordinates = !mDebugCoordinates;
-        } else if (mDebug && mLastTouch.equals(0, mGridSizeY - 1) && mGridSize > 2) {
+        } else if (mDebug && mPreviousTouch.equals(mGridSizeX - 1, 0)) {
+            mDebugGridAndCoordinates = !mDebugGridAndCoordinates;
+        } else if (mDebug && mPreviousTouch.equals(0, mGridSizeY - 1) && mGridSize > 2) {
             mGridSize -= 1;
             mGridSizeX = mGridSize;
             mGridSizeY = mGridSize;
             surfaceCreatedInit();
-        } else if (mDebug && mLastTouch.equals(mGridSizeX - 1, mGridSizeY - 1)) {
+        } else if (mDebug && mPreviousTouch.equals(mGridSizeX - 1, mGridSizeY - 1)) {
             mGridSize += 1;
             mGridSizeX = mGridSize;
             mGridSizeY = mGridSize;
@@ -262,6 +251,24 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
         }
     }
 
+    /*
+    * Only check if active mole was touched. Downside with this is that won't be possible to
+    * score on moles that are going down in the hole.
+    *
+    * Also another downside is that for every single touch this will loop through all active moles.
+    * */
+    private void activeMoleTouched() {
+        for (Mole mole : mActiveMoles) {
+            if (mole.position.equals(mCurrentTouch)) {
+                if (!mole.isActive())
+                    break;
+
+                mole.deactivate();
+                mActiveMoles.remove(mole);
+                break;
+            }
+        }
+    }
 
     @Override
     public void draw(Canvas canvas) {
@@ -281,26 +288,34 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
             mMoleHoles.get(i).drawForeground(canvas);
         }
 
-        if (mDebugCoordinates)
-            drawDebugCoordinates(canvas);
+        if (mDebugGridAndCoordinates)
+            drawDebugGridAndCoordinates(canvas);
 
         if (mDebug)
             drawDebug(canvas);
     }
 
-    private void drawDebugCoordinates(Canvas canvas) {
+    private void drawDebugGridAndCoordinates(Canvas canvas) {
         try {
             mDebugPaint.setColor(Color.RED);
             mDebugPaint.setStrokeWidth(4);
+
             for(int x = 0; x < mGridSizeX; x++) {
-                canvas.drawLine(x * mGridCellSizeX - 2, 0, x * mGridCellSizeX - 2, getHeight(), mDebugPaint);
-                canvas.drawLine(0, x * mGridCellSizeY - 2, getWidth(), x * mGridCellSizeY - 2, mDebugPaint);
+                float startStopX = x * mGridCellSizeX - 2;
+                canvas.drawLine(startStopX, 0, startStopX, getHeight(), mDebugPaint);
 
                 for(int y = 0; y < mGridSizeY; y++) {
+                    if (x == 0) {
+                        // Only need to draw grid lines once.
+                        float startStopY = y * mGridCellSizeY - 2;
+                        canvas.drawLine(0, startStopY, getWidth(), startStopY, mDebugPaint);
+                    }
+
                     canvas.drawText(
                             String.format("%d,%d", x, y),
                             x * mGridCellSizeX + 5,
-                            y * mGridCellSizeY + mDebugPaint.getTextSize(), mDebugPaint);
+                            y * mGridCellSizeY + mDebugPaint.getTextSize(),
+                            mDebugPaint);
                 }
             }
         } catch (Exception exception) {
@@ -311,6 +326,11 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
     @SuppressLint("DefaultLocale")
     private void drawDebug(Canvas canvas) {
         try {
+            mDebugPaint.setColor(Color.BLACK);
+            mDebugPaint.setAlpha(100);
+            mDebugPaint.setStyle(Paint.Style.FILL);
+            canvas.drawPaint(mDebugPaint);
+
             List<String> debugTextLines = new ArrayList<String>();
             debugTextLines.add(String.format("FPS: %d", GameGlobal.averageFps()));
             debugTextLines.add(String.format("DeltaTime: %f s", GameGlobal.deltaTime()));
@@ -318,7 +338,8 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
             debugTextLines.add(String.format("GridSize: %d x %d", mGridSizeX, mGridSizeY));
             debugTextLines.add(String.format("SpriteSize: %d x %d", mGridCellSizeX, mGridCellSizeY));
             debugTextLines.add(String.format("ActiveMoles: %d", mActiveMoles.size()));
-            debugTextLines.add(String.format("LastTouch: %s", mLastTouch.toString()));
+            debugTextLines.add(String.format("CurrentTouch: %s", mCurrentTouch.toString()));
+
             drawDebutTextLines(canvas, debugTextLines);
         } catch (Exception exception) {
             exception.printStackTrace();
@@ -329,15 +350,11 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
         if (debugTextLines.size() == 0)
             return;
 
-        mDebugPaint.setColor(Color.BLACK);
-        mDebugPaint.setAlpha(100);
-        mDebugPaint.setStyle(Paint.Style.FILL);
-        canvas.drawPaint(mDebugPaint);
-
-        int increment = 0;
         mDebugPaint.setTextSize(mDebugTextSize);
         mDebugPaint.setAlpha(255);
         mDebugPaint.setColor(Color.WHITE);
+
+        int increment = 0;
         for (String textLine : debugTextLines) {
             increment++;
             canvas.drawText(textLine, 5, mDebugTextSize * increment, mDebugPaint);
@@ -350,26 +367,22 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
         logic();
 
         // Sprite logic
-        /*
-        for(MoleHole hole: mMoleHoles) {
-            hole.update(elapsedTime);
-        }
-        */
-
         for(Mole mole : mMoles) {
             mole.update();
         }
     }
 
     private void logic() {
-        // TODO: Consider adding this as view attribute.
+        // TODO: Consider adding these as view attribute.
+        int maxNumberOfActivatedMoles = mGridSizeX * mGridSizeY / 2;
+        int minNumberOfActiveMoles = 1;
         float waitTime = 2f;
 
         if (!mRoundActive && GameGlobal.currentTime() > mWaitTilNextRound) {
             mRoundActive = true;
             mRoundStarted = GameGlobal.currentTime();
 
-            int numberOfMolesToActivate = mRandom.nextInt((mGridSizeX * mGridSizeY / 2) - 1) + 1;
+            int numberOfMolesToActivate = mRandom.nextInt(maxNumberOfActivatedMoles - minNumberOfActiveMoles) + minNumberOfActiveMoles;
             while (numberOfMolesToActivate > 0) {
                 activateRandomMole();
                 numberOfMolesToActivate--;
@@ -379,8 +392,8 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
         if (mRoundActive && (GameGlobal.currentTime() > mRoundStarted + waitTime || mActiveMoles.size() == 0)) {
             mRoundActive = false;
 
-            for (Mole mole : mActiveMoles) {
-                mole.inActivate();
+            for (Mole activeMole : mActiveMoles) {
+                activeMole.deactivate();
             }
 
             mWaitTilNextRound = GameGlobal.currentTime() + waitTime;
@@ -395,15 +408,17 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
         boolean randomMoleActivated = false;
         while (!randomMoleActivated) {
             Mole mole = mMoles.get(mRandom.nextInt(mMoles.size()));
-            if(!mole.isActive()) {
-                mole.activate();
-                mActiveMoles.add(mole);
-                randomMoleActivated = true;
-            }
+
+            if(mole.isActive())
+                continue;
+
+            mole.activate();
+            mActiveMoles.add(mole);
+            randomMoleActivated = true;
         }
     }
 
-    public void resetDraw() {
+    public void startGame() {
         // TODO: Start game, currently it will automatically start.
     }
 }

@@ -57,7 +57,7 @@ public class Mole extends BaseSprite {
         setRandomTexture();
     }
 
-    public void inActivate() {
+    public void deactivate() {
         this.active = false;
     }
 
