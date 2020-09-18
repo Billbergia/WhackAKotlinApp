@@ -2,9 +2,6 @@ package com.example.myfirstkotlinapp.gamecore;
 
 import android.graphics.Canvas;
 
-/**
- *
- */
 public abstract class BaseSprite implements IBaseSprite {
     public Vector2 position;
 

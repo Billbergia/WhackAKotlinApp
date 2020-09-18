@@ -32,7 +32,6 @@ public class Vector2 {
 
     /**
      * Subtracts a vector from this vector.
-     * @param other
      * @return The instance of this vector.
      */
     public Vector2 subtract(Vector2 other) {
@@ -44,7 +43,6 @@ public class Vector2 {
 
     /**
      * Adds a vector to this vector.
-     * @param other
      * @return The instance of this vector.
      */
     public Vector2 add(Vector2 other) {
@@ -56,7 +54,6 @@ public class Vector2 {
 
     /**
      * Multiplies the vector x and y by a scalar.
-     * @param scalar The scalar to multiply
      * @return The instance of this Vector2
      */
     public Vector2 multiply(float scalar) {
@@ -68,8 +65,6 @@ public class Vector2 {
 
     /**
      * Compare x and y of this vector.
-     * @param x
-     * @param y
      * @return True if comparison is equal.
      */
     public boolean equals(float x, float y) {
@@ -78,7 +73,6 @@ public class Vector2 {
 
     /**
      * Compare a vector to this vector.
-     * @param other
      * @return True if comparison is equal.
      */
     public boolean equals(Vector2 other) {
@@ -87,8 +81,6 @@ public class Vector2 {
 
     /**
      * Set the x and y of this vector.
-     * @param x
-     * @param y
      * @return The instance of this vector.
      */
     public Vector2 set(float x, float y) {

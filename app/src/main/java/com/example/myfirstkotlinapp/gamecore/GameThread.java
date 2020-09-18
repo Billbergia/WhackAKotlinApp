@@ -6,6 +6,7 @@ import android.view.SurfaceHolder;
 import com.example.myfirstkotlinapp.GameView;
 
 public class GameThread extends Thread {
+    public static Canvas canvas;
 
     private final SurfaceHolder surfaceHolder;
     private GameView gameView;
@@ -14,8 +15,6 @@ public class GameThread extends Thread {
     private boolean running;
     private int targetFps = 60;
     private int targetTimeMs = 1000 / targetFps;
-
-    public static Canvas canvas;
 
     public GameThread(SurfaceHolder surfaceHolder, GameView gameView) {
         super();
@@ -42,10 +41,9 @@ public class GameThread extends Thread {
             try {
                 canvas = this.surfaceHolder.lockCanvas();
                 synchronized (surfaceHolder) {
-                    // Give update deltaTime in seconds instead of nano seconds.
-                    this.gameGlobal._deltaTime = (float)(deltaTimeNs / 1_000_000_000.0);
-                    this.gameGlobal._currentTime = (float)(currentTimeNs / 1_000_000_000.0);
-                    this.gameView.update((float)(deltaTimeNs / 1_000_000_000.0));
+                    this.gameGlobal._deltaTime = nanoSecondsToSeconds(deltaTimeNs);
+                    this.gameGlobal._currentTime = nanoSecondsToSeconds(currentTimeNs);
+                    this.gameView.update();
                     this.gameView.draw(canvas);
                 }
             } catch (Exception exception) {
@@ -86,5 +84,9 @@ public class GameThread extends Thread {
 
     public void setRunning(boolean running) {
         this.running = running;
+    }
+
+    private float nanoSecondsToSeconds(long timeNs) {
+        return timeNs / 1_000_000_000.0f;
     }
 }

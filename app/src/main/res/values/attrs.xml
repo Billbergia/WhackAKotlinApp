@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <declare-styleable name="GameView">
-        <attr name="hole_texture" format="reference"></attr>
+        <attr name="hole_background_texture" format="reference"></attr>
         <attr name="hole_foreground_texture" format="reference"></attr>
         <attr name="mole_texture_1" format="reference"></attr>
         <attr name="mole_texture_2" format="reference"></attr>

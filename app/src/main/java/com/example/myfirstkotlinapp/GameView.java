@@ -4,12 +4,9 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Matrix;
 import android.graphics.Paint;
-import android.graphics.RectF;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
@@ -18,6 +15,7 @@ import android.view.SurfaceView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.example.myfirstkotlinapp.gamecore.BitmapHelper;
 import com.example.myfirstkotlinapp.gamecore.GameGlobal;
 import com.example.myfirstkotlinapp.gamecore.GameThread;
 import com.example.myfirstkotlinapp.sprites.Mole;
@@ -34,41 +32,47 @@ import java.util.Random;
 * */
 public class GameView extends SurfaceView implements SurfaceHolder.Callback {
 
-    private GameThread thread;
+    private GameThread mThread;
 
+    // Grid
     private int mGridSize = 3;
     private int mGridSizeX = mGridSize;
     private int mGridSizeY = mGridSize;
-
-    // Will be set in surfaceCreated()
     private int mGridCellSizeX = 0;
     private int mGridCellSizeY = 0;
 
+    // Game logic
     private boolean mRoundActive = false;
     private float mRoundStarted = 0f;
     private float mWaitTilNextRound = 0f;
 
+    // Sprites
     private Random mRandom = new Random();
     private List<Mole> mMoles = new ArrayList<Mole>();
     private List<Mole> mActiveMoles = new ArrayList<Mole>();
     private List<MoleHole> mMoleHoles = new ArrayList<MoleHole>();
 
-    private List<Bitmap> mMoleTextures = new ArrayList<Bitmap>();
-    private Bitmap mHoleTexture;
-    private Bitmap mHoleTextureForeground;
-
+    // Textures
     private int mHoleTextureId;
     private int mHoleTextureForegroundId;
     private int[] mMoleTextureIds;
+    private Bitmap mHoleBackgroundTexture;
+    private Bitmap mHoleForegroundTexture;
+    private List<Bitmap> mMoleTextures = new ArrayList<Bitmap>();
 
+    // Input
     private Vector2 mPreviousTouch = new Vector2();
     private Vector2 mCurrentTouch = new Vector2();
     private long mPreviousTouchTimeMs = 0;
 
+    // Debug
+    private List<String> mDebutTextLines = new ArrayList<String>();
     private boolean mDebug = false;
     private boolean mDebugGridAndCoordinates = false;
-    private Paint mDebugPaint;
     private int mDebugTextSize = 50;
+    private Paint mDebugGridAndCoordinatesPaint;
+    private Paint mDebugBackgroundPaint;
+    private Paint mDebugTextPaint;
 
     public GameView(Context context) {
         super(context);
@@ -92,7 +96,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
 
     private void init(@Nullable AttributeSet set) {
         getHolder().addCallback(this);
-        thread = new GameThread(getHolder(), this);
+        mThread = new GameThread(getHolder(), this);
 
         if (set != null)
             getAttributesAndInitializeOptionFields(set);
@@ -105,7 +109,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
         mGridSizeX = mGridSize;
         mGridSizeY = mGridSize;
 
-        mHoleTextureId = ta.getResourceId(R.styleable.GameView_hole_texture, R.drawable.wak_default_hole);
+        mHoleTextureId = ta.getResourceId(R.styleable.GameView_hole_background_texture, R.drawable.wak_default_hole);
         mHoleTextureForegroundId = ta.getResourceId(R.styleable.GameView_hole_foreground_texture, R.drawable.wak_default_hole_foreground);
         mMoleTextureIds = new int[]{
                 ta.getResourceId(R.styleable.GameView_mole_texture_1, R.drawable.wak_default_mole_1),
@@ -120,46 +124,45 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
     public void surfaceCreated(@NonNull SurfaceHolder holder) {
         surfaceCreatedInit();
 
-        thread.setRunning(true);
-        thread.start();
+        mThread.setRunning(true);
+        mThread.start();
     }
 
     private void surfaceCreatedInit() {
         mGridCellSizeX = getWidth() / mGridSizeX;
         mGridCellSizeY = getHeight() / mGridSizeY;
 
+        initializePaints();
         initializeTextures();
         createLevel();
+    }
 
-        mDebugPaint = new Paint();
-        mDebugPaint.setColor(Color.RED);
-        mDebugPaint.setStrokeWidth(4);
-        mDebugPaint.setTextSize(50);
+    private void initializePaints() {
+        mDebugGridAndCoordinatesPaint = new Paint();
+        mDebugGridAndCoordinatesPaint.setColor(Color.RED);
+        mDebugGridAndCoordinatesPaint.setTextSize(mDebugTextSize);
+        mDebugGridAndCoordinatesPaint.setStrokeWidth(4);
+
+        mDebugBackgroundPaint = new Paint();
+        mDebugBackgroundPaint.setColor(Color.BLACK);
+        mDebugBackgroundPaint.setStyle(Paint.Style.FILL);
+        mDebugBackgroundPaint.setAlpha(100);
+
+        mDebugTextPaint = new Paint();
+        mDebugTextPaint.setColor(Color.WHITE);
+        mDebugTextPaint.setTextSize(mDebugTextSize);
     }
 
     private void initializeTextures() {
         mMoleTextures.clear();
 
-        mHoleTexture = BitmapFactory.decodeResource(getResources(), mHoleTextureId);
-        mHoleTexture = getResizedBitmap(mHoleTexture, mGridCellSizeX, mGridCellSizeY);
-        mHoleTextureForeground = BitmapFactory.decodeResource(getResources(), mHoleTextureForegroundId);
-        mHoleTextureForeground = getResizedBitmap(mHoleTextureForeground, mGridCellSizeX, mGridCellSizeY);
+        mHoleBackgroundTexture = BitmapHelper.resizeBitmap(getResources(), mHoleTextureId, mGridCellSizeX, mGridCellSizeY);
+        mHoleForegroundTexture = BitmapHelper.resizeBitmap(getResources(), mHoleTextureForegroundId, mGridCellSizeX, mGridCellSizeY);
 
         for (int moleTextureId : mMoleTextureIds) {
-            Bitmap texture = getResizedBitmap(BitmapFactory.decodeResource(getResources(), moleTextureId), mGridCellSizeX, mGridCellSizeY);
-            mMoleTextures.add(texture);
+            mMoleTextures.add(
+                    BitmapHelper.resizeBitmap(getResources(), moleTextureId, mGridCellSizeX, mGridCellSizeY));
         }
-    }
-
-    private Bitmap getResizedBitmap(Bitmap bitmap, int newWidth, int newHeight) {
-        RectF src = new RectF(0, 0, bitmap.getWidth(), bitmap.getHeight());
-        RectF dst = new RectF(0, 0, newWidth, newHeight);
-        Matrix matrix = new Matrix();
-        matrix.setRectToRect(src, dst, Matrix.ScaleToFit.FILL);
-
-        Bitmap resized = Bitmap.createBitmap(bitmap, 0, 0 , bitmap.getWidth(), bitmap.getHeight(), matrix, true);
-        bitmap.recycle();
-        return resized;
     }
 
     /*
@@ -179,7 +182,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
 
         for (int x = 0; x < mGridSizeX; x++) {
             for (int y = 0; y < mGridSizeY; y++) {
-                mMoleHoles.add(new MoleHole(new Vector2(x, y), mHoleTexture, mHoleTextureForeground));
+                mMoleHoles.add(new MoleHole(new Vector2(x, y), mHoleBackgroundTexture, mHoleForegroundTexture));
                 mMoles.add(new Mole(new Vector2(x, y + 1), mMoleTextures));
             }
         }
@@ -195,8 +198,8 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
         boolean retry = true;
         while (retry) {
             try {
-                thread.setRunning(false);
-                thread.join();
+                mThread.setRunning(false);
+                mThread.join();
             } catch (Exception exception) {
                 exception.printStackTrace();
             }
@@ -254,7 +257,6 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
     /*
     * Only check if active mole was touched. Downside with this is that won't be possible to
     * score on moles that are going down in the hole.
-    *
     * Also another downside is that for every single touch this will loop through all active moles.
     * */
     private void activeMoleTouched() {
@@ -277,9 +279,9 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
         if (canvas == null)
             return;
 
-        mDebugPaint.setTextSize(mDebugTextSize);
-        mDebugPaint.setColor(Color.RED);
-        mDebugPaint.setAlpha(255);
+        mDebugGridAndCoordinatesPaint.setTextSize(mDebugTextSize);
+        mDebugGridAndCoordinatesPaint.setColor(Color.RED);
+        mDebugGridAndCoordinatesPaint.setAlpha(255);
 
         // A small hack that makes it so the mole is hidden behind below hole background texture.
         for (int i = 0; i < mMoleHoles.size(); i++) {
@@ -297,25 +299,25 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
 
     private void drawDebugGridAndCoordinates(Canvas canvas) {
         try {
-            mDebugPaint.setColor(Color.RED);
-            mDebugPaint.setStrokeWidth(4);
+            mDebugGridAndCoordinatesPaint.setColor(Color.RED);
+            mDebugGridAndCoordinatesPaint.setStrokeWidth(4);
 
             for(int x = 0; x < mGridSizeX; x++) {
                 float startStopX = x * mGridCellSizeX - 2;
-                canvas.drawLine(startStopX, 0, startStopX, getHeight(), mDebugPaint);
+                canvas.drawLine(startStopX, 0, startStopX, getHeight(), mDebugGridAndCoordinatesPaint);
 
                 for(int y = 0; y < mGridSizeY; y++) {
                     if (x == 0) {
                         // Only need to draw grid lines once.
                         float startStopY = y * mGridCellSizeY - 2;
-                        canvas.drawLine(0, startStopY, getWidth(), startStopY, mDebugPaint);
+                        canvas.drawLine(0, startStopY, getWidth(), startStopY, mDebugGridAndCoordinatesPaint);
                     }
 
                     canvas.drawText(
                             String.format("%d,%d", x, y),
                             x * mGridCellSizeX + 5,
-                            y * mGridCellSizeY + mDebugPaint.getTextSize(),
-                            mDebugPaint);
+                            y * mGridCellSizeY + mDebugGridAndCoordinatesPaint.getTextSize(),
+                            mDebugGridAndCoordinatesPaint);
                 }
             }
         } catch (Exception exception) {
@@ -326,44 +328,38 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
     @SuppressLint("DefaultLocale")
     private void drawDebug(Canvas canvas) {
         try {
-            mDebugPaint.setColor(Color.BLACK);
-            mDebugPaint.setAlpha(100);
-            mDebugPaint.setStyle(Paint.Style.FILL);
-            canvas.drawPaint(mDebugPaint);
+            mDebutTextLines.clear();
+            mDebutTextLines.add(String.format("FPS: %d", GameGlobal.averageFps()));
+            mDebutTextLines.add(String.format("DeltaTime: %f s", GameGlobal.deltaTime()));
+            mDebutTextLines.add(String.format("CurrentTime: %.2f s", GameGlobal.currentTime()));
+            mDebutTextLines.add(String.format("GridSize: %d x %d", mGridSizeX, mGridSizeY));
+            mDebutTextLines.add(String.format("SpriteSize: %d x %d", mGridCellSizeX, mGridCellSizeY));
+            mDebutTextLines.add(String.format("ActiveMoles: %d", mActiveMoles.size()));
+            mDebutTextLines.add(String.format("CurrentTouch: %s", mCurrentTouch.toString()));
 
-            List<String> debugTextLines = new ArrayList<String>();
-            debugTextLines.add(String.format("FPS: %d", GameGlobal.averageFps()));
-            debugTextLines.add(String.format("DeltaTime: %f s", GameGlobal.deltaTime()));
-            debugTextLines.add(String.format("CurrentTime: %.2f s", GameGlobal.currentTime()));
-            debugTextLines.add(String.format("GridSize: %d x %d", mGridSizeX, mGridSizeY));
-            debugTextLines.add(String.format("SpriteSize: %d x %d", mGridCellSizeX, mGridCellSizeY));
-            debugTextLines.add(String.format("ActiveMoles: %d", mActiveMoles.size()));
-            debugTextLines.add(String.format("CurrentTouch: %s", mCurrentTouch.toString()));
-
-            drawDebutTextLines(canvas, debugTextLines);
+            drawDebutTextLines(canvas, mDebutTextLines);
         } catch (Exception exception) {
             exception.printStackTrace();
         }
     }
 
+    /** Draws a debug overlay with the given text lines. */
     private void drawDebutTextLines(Canvas canvas, List<String> debugTextLines) {
+        canvas.drawPaint(mDebugBackgroundPaint);
+
         if (debugTextLines.size() == 0)
             return;
 
-        mDebugPaint.setTextSize(mDebugTextSize);
-        mDebugPaint.setAlpha(255);
-        mDebugPaint.setColor(Color.WHITE);
-
-        int increment = 0;
-        for (String textLine : debugTextLines) {
-            increment++;
-            canvas.drawText(textLine, 5, mDebugTextSize * increment, mDebugPaint);
+        for (int i = 0; i < debugTextLines.size(); i++) {
+            canvas.drawText(debugTextLines.get(i), 5, mDebugTextSize * (i + 1), mDebugTextPaint);
         }
     }
 
-    public void update(float deltaTime) {
-        // Overall game-logic should run first so sprite logic
-        // benefit from the updates before next frame.
+    /**
+     * Update is the method where we calculate all the game logic such as
+     * movement of the game objects etc. This is called before draw() once for every frame.
+     */
+    public void update() {
         logic();
 
         // Sprite logic
