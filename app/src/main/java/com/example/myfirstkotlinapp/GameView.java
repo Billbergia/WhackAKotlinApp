@@ -262,10 +262,10 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
     private void activeMoleTouched() {
         for (Mole mole : mActiveMoles) {
             if (mole.position.equals(mCurrentTouch)) {
-                if (!mole.isActive())
+                if (!mole.getActive())
                     break;
 
-                mole.deactivate();
+                mole.setActive(false);
                 mActiveMoles.remove(mole);
                 break;
             }
@@ -389,7 +389,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
             mRoundActive = false;
 
             for (Mole activeMole : mActiveMoles) {
-                activeMole.deactivate();
+                activeMole.setActive(false);
             }
 
             mWaitTilNextRound = GameGlobal.currentTime() + waitTime;
@@ -405,10 +405,10 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback {
         while (!randomMoleActivated) {
             Mole mole = mMoles.get(mRandom.nextInt(mMoles.size()));
 
-            if(mole.isActive())
+            if(mole.getActive())
                 continue;
 
-            mole.activate();
+            mole.setActive(true);
             mActiveMoles.add(mole);
             randomMoleActivated = true;
         }
